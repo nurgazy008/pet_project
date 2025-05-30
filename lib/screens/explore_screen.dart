@@ -177,6 +177,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
           _buildCategoryItem(Icons.school, 'Education'),
           const SizedBox(width: 16),
           _buildCategoryItem(Icons.movie, 'Film & TV'),
+
         ],
       ),
     );

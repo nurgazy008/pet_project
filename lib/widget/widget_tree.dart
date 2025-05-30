@@ -1,19 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_application_3/about/ticket_screen.dart';
 import 'package:flutter_application_3/constants/constans.dart';
 import 'package:flutter_application_3/data/notifier.dart';
 import 'package:flutter_application_3/screens/events_screen.dart';
 import 'package:flutter_application_3/screens/explore_screen.dart';
 import 'package:flutter_application_3/screens/map_screen.dart';
 import 'package:flutter_application_3/screens/profile_screen.dart';
-
 import 'package:flutter_application_3/widget/navbar_widget.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+// Add TicketsScreen to your pages list
 List<Widget> pages = [
-  ExploreScreen(),
-  EventsScreen(),
-  MapScreen(),
-  ProfilePage()
+  ExploreScreen(), // Index 0
+  EventsScreen(), // Index 1
+  MapScreen(), // Index 2
+  TicketsScreen(), // Index 3 - NEW!
+  ProfilePage() // Index 4 (was 3)
 ];
 
 class WidgetTree extends StatelessWidget {

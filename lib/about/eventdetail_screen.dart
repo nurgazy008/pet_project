@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_application_3/about/orderdetails_screen.dart';
+import 'package:flutter_application_3/about/ticket_confirmation_screen.dart';
+import 'package:flutter_application_3/screens/login_page.dart';
+import 'package:flutter_application_3/services/firestore_service.dart';
+import 'package:flutter_application_3/services/auth_service.dart';
 
-
-/// Screen that displays detailed information about an event and allows users
-/// to purchase tickets.
-class EventDetailsScreen extends StatelessWidget {
+class EventDetailsScreen extends StatefulWidget {
   final String eventTitle;
   final String eventDate;
   final String eventTime;
   final String eventVenue;
   final String eventImage;
   final double ticketPrice;
-  
+
   const EventDetailsScreen({
     super.key,
     required this.eventTitle,
@@ -21,6 +21,37 @@ class EventDetailsScreen extends StatelessWidget {
     required this.eventImage,
     required this.ticketPrice,
   });
+
+  @override
+  State<EventDetailsScreen> createState() => _EventDetailsScreenState();
+}
+
+class _EventDetailsScreenState extends State<EventDetailsScreen> {
+  final FirestoreService _firestoreService = FirestoreService();
+  final AuthService _authService = AuthService();
+  bool _hasTicket = false;
+  bool _isCheckingTicket = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkIfUserHasTicket();
+  }
+
+  Future<void> _checkIfUserHasTicket() async {
+    if (_authService.currentUser != null) {
+      bool hasTicket =
+          await _firestoreService.hasTicketForEvent(widget.eventTitle);
+      setState(() {
+        _hasTicket = hasTicket;
+        _isCheckingTicket = false;
+      });
+    } else {
+      setState(() {
+        _isCheckingTicket = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -34,7 +65,7 @@ class EventDetailsScreen extends StatelessWidget {
                 children: [
                   // Event Image
                   Image.asset(
-                    eventImage,
+                    widget.eventImage,
                     height: 300,
                     width: double.infinity,
                     fit: BoxFit.cover,
@@ -108,7 +139,7 @@ class EventDetailsScreen extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          eventTitle,
+                          widget.eventTitle,
                           style: const TextStyle(
                             color: Colors.white,
                             fontSize: 24,
@@ -125,7 +156,7 @@ class EventDetailsScreen extends StatelessWidget {
                             ),
                             const SizedBox(width: 8),
                             Text(
-                              eventDate,
+                              widget.eventDate,
                               style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 14,
@@ -166,7 +197,7 @@ class EventDetailsScreen extends StatelessWidget {
             bottom: 20,
             left: 16,
             right: 16,
-            child: _buildGetTicketButton(context),
+            child: _buildActionButton(context),
           ),
         ],
       ),
@@ -177,19 +208,20 @@ class EventDetailsScreen extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        _buildDetailItem(Icons.access_time, eventTime),
+        _buildDetailItem(Icons.access_time, widget.eventTime),
         Container(
           height: 40,
           width: 1,
           color: Colors.grey[300],
         ),
-        _buildDetailItem(Icons.location_on, eventVenue),
+        _buildDetailItem(Icons.location_on, widget.eventVenue),
         Container(
           height: 40,
           width: 1,
           color: Colors.grey[300],
         ),
-        _buildDetailItem(Icons.attach_money, "${ticketPrice.toInt()}KZT"),
+        _buildDetailItem(
+            Icons.attach_money, "${widget.ticketPrice.toInt()}KZT"),
       ],
     );
   }
@@ -360,25 +392,90 @@ class EventDetailsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildGetTicketButton(BuildContext context) {
-    return ElevatedButton(
-      onPressed: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => OrderDetailsScreen(
-              eventTitle: eventTitle,
-              eventDate: eventDate,
-              eventTime: eventTime,
-              eventVenue: eventVenue,
-              eventImage: eventImage,
-              ticketPrice: ticketPrice,
-              ticketCount: 2,
-              fees: 500,
-            ),
+  Widget _buildActionButton(BuildContext context) {
+    if (_isCheckingTicket) {
+      return Container(
+        height: 56,
+        decoration: BoxDecoration(
+          color: Colors.grey[300],
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: const Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
+    // If user is not authenticated
+    if (_authService.currentUser == null) {
+      return ElevatedButton(
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const LoginPage()),
+          );
+        },
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.orange[700],
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
           ),
-        );
-      },
+          padding: const EdgeInsets.symmetric(vertical: 16),
+        ),
+        child: const Text(
+          'Sign In to Get Ticket',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
+      );
+    }
+
+    // If user already has a ticket
+    if (_hasTicket) {
+      return ElevatedButton(
+        onPressed: () async {
+          final ticket =
+              await _firestoreService.getUserTicketForEvent(widget.eventTitle);
+          if (ticket != null) {
+            final ticketData = ticket.data() as Map<String, dynamic>;
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => TicketConfirmationScreen(
+                  ticketId: ticketData['ticketId'],
+                  eventTitle: widget.eventTitle,
+                  eventDate: widget.eventDate,
+                  eventTime: widget.eventTime,
+                  eventVenue: widget.eventVenue,
+                ),
+              ),
+            );
+          }
+        },
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.green[700],
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          padding: const EdgeInsets.symmetric(vertical: 16),
+        ),
+        child: const Text(
+          'View My Ticket',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
+      );
+    }
+
+    // If user can purchase a ticket
+    return ElevatedButton(
+      onPressed: () => _handleTicketPurchase(context),
       style: ElevatedButton.styleFrom(
         backgroundColor: Colors.blue[700],
         shape: RoundedRectangleBorder(
@@ -391,8 +488,74 @@ class EventDetailsScreen extends StatelessWidget {
         style: TextStyle(
           fontSize: 16,
           fontWeight: FontWeight.bold,
+          color: Colors.white,
         ),
       ),
     );
+  }
+
+  Future<void> _handleTicketPurchase(BuildContext context) async {
+    try {
+      // Show loading dialog
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+
+      // Create ticket order in Firestore
+      final ticketId = await _firestoreService.createTicketOrder(
+        eventTitle: widget.eventTitle,
+        eventDate: widget.eventDate,
+        eventTime: widget.eventTime,
+        eventVenue: widget.eventVenue,
+        eventImage: widget.eventImage,
+        ticketPrice: widget.ticketPrice,
+        ticketCount: 1,
+        fees: 500,
+      );
+
+      // Close loading dialog
+      Navigator.pop(context);
+
+      // Update local state
+      setState(() {
+        _hasTicket = true;
+      });
+
+      // Navigate to confirmation screen
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => TicketConfirmationScreen(
+            ticketId: ticketId,
+            eventTitle: widget.eventTitle,
+            eventDate: widget.eventDate,
+            eventTime: widget.eventTime,
+            eventVenue: widget.eventVenue,
+          ),
+        ),
+      );
+    } catch (e) {
+      // Close loading dialog
+      Navigator.pop(context);
+
+      // Show error dialog
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Error'),
+          content: Text('Failed to purchase ticket: $e'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+    }
   }
 }

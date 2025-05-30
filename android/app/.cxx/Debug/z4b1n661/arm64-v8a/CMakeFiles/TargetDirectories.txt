@@ -1,0 +1,2 @@
+/Users/nurgazyzhangozy/Desktop/flutter_pros/appos1/flutter_application_3/android/app/.cxx/Debug/z4b1n661/arm64-v8a/CMakeFiles/edit_cache.dir
+/Users/nurgazyzhangozy/Desktop/flutter_pros/appos1/flutter_application_3/android/app/.cxx/Debug/z4b1n661/arm64-v8a/CMakeFiles/rebuild_cache.dir
