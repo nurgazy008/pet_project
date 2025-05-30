@@ -7,13 +7,10 @@ class FirestoreService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final AuthService _authService = AuthService();
 
-  // Check if user is authenticated
   bool get isUserAuthenticated => _authService.currentUser != null;
   
-  // Get current user
   User? get currentUser => _authService.currentUser;
 
-  // Generate random ticket ID
   String generateTicketId() {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
     Random rnd = Random();
@@ -21,9 +18,7 @@ class FirestoreService {
         8, (_) => chars.codeUnitAt(rnd.nextInt(chars.length))));
   }
 
-  // ========== YOUR ORIGINAL METHODS (KEPT EXACTLY AS THEY WERE) ==========
 
-  // Create ticket order (your original method)
   Future<String> createTicketOrder({
     required String eventTitle,
     required String eventDate,
@@ -61,16 +56,13 @@ class FirestoreService {
         'hasRated': false,
       };
 
-      // Create a batch write for atomic operation
       WriteBatch batch = _firestore.batch();
 
-      // Add to main tickets collection
       DocumentReference ticketRef = _firestore
           .collection('tickets')
           .doc(ticketId);
       batch.set(ticketRef, orderData);
 
-      // Add to user's tickets subcollection
       DocumentReference userTicketRef = _firestore
           .collection('users')
           .doc(user.uid)
@@ -78,7 +70,6 @@ class FirestoreService {
           .doc(ticketId);
       batch.set(userTicketRef, orderData);
 
-      // Add to event's tickets subcollection
       String eventId = eventTitle.replaceAll(' ', '_').toLowerCase();
       DocumentReference eventTicketRef = _firestore
           .collection('events')
@@ -87,7 +78,6 @@ class FirestoreService {
           .doc(ticketId);
       batch.set(eventTicketRef, orderData);
 
-      // Update user's profile with ticket purchase info
       await _authService.updateUserData({
         'email': user.email,
         'displayName': user.displayName ?? 'Unknown User',
@@ -96,7 +86,6 @@ class FirestoreService {
         'totalSpent': FieldValue.increment((ticketPrice * ticketCount) + fees),
       });
 
-      // Commit the batch
       await batch.commit();
 
       return ticketId;
@@ -105,7 +94,6 @@ class FirestoreService {
     }
   }
 
-  // Get user's tickets
   Stream<QuerySnapshot> getUserTickets() {
     final user = _authService.currentUser;
     if (user == null) {
@@ -120,7 +108,6 @@ class FirestoreService {
         .snapshots();
   }
 
-  // Get ticket count for navigation bar
   Stream<int> getTicketCount() {
     final user = _authService.currentUser;
     if (user == null) return Stream.value(0);
@@ -133,7 +120,6 @@ class FirestoreService {
         .map((snapshot) => snapshot.docs.length);
   }
 
-  // Get specific ticket details
   Future<DocumentSnapshot> getTicketDetails(String ticketId) async {
     final user = _authService.currentUser;
     if (user == null) {
@@ -148,7 +134,6 @@ class FirestoreService {
         .get();
   }
 
-  // Validate ticket (for event organizers)
   Future<Map<String, dynamic>?> validateTicket(String ticketId) async {
     try {
       DocumentSnapshot ticketDoc = await _firestore
@@ -165,7 +150,6 @@ class FirestoreService {
     }
   }
 
-  // Get all events
   Stream<QuerySnapshot> getAllEvents() {
     return _firestore
         .collection('events')
@@ -173,17 +157,14 @@ class FirestoreService {
         .snapshots();
   }
 
-  // Get user profile data
   Future<Map<String, dynamic>?> getUserProfile() async {
     return await _authService.getUserData();
   }
 
-  // Sign out user
   Future<void> signOut() async {
     await _authService.signOut();
   }
 
-  // Check if user has tickets for a specific event
   Future<bool> hasTicketForEvent(String eventTitle) async {
     final user = _authService.currentUser;
     if (user == null) return false;
@@ -203,7 +184,6 @@ class FirestoreService {
     }
   }
 
-  // Get user's ticket for a specific event
   Future<DocumentSnapshot?> getUserTicketForEvent(String eventTitle) async {
     final user = _authService.currentUser;
     if (user == null) return null;
@@ -277,12 +257,10 @@ class FirestoreService {
         'ratedAt': FieldValue.serverTimestamp(),
       });
 
-      // Update event's average rating
       DocumentReference eventRef = _firestore
           .collection('events')
           .doc(eventId);
       
-      // Get current event data
       DocumentSnapshot eventDoc = await eventRef.get();
       if (eventDoc.exists) {
         Map<String, dynamic> eventData = eventDoc.data() as Map<String, dynamic>;
@@ -290,7 +268,6 @@ class FirestoreService {
         int totalRatings = eventData['totalRatings'] ?? 0;
         double currentAvgRating = eventData['averageRating'] ?? 0.0;
         
-        // Calculate new average rating
         double newAvgRating;
         if (totalRatings == 0) {
           newAvgRating = rating;
@@ -306,14 +283,12 @@ class FirestoreService {
         });
       }
 
-      // Commit the batch
       await batch.commit();
     } catch (e) {
       throw Exception('Failed to rate event: $e');
     }
   }
 
-  // Get popular events (CORRECTED - no problematic query)
   Stream<QuerySnapshot> getPopularEvents() {
     return _firestore
         .collection('events')
@@ -401,16 +376,14 @@ class FirestoreService {
         'hasRated': false,
       };
 
-      // Create a batch write for atomic operation
+  
       WriteBatch batch = _firestore.batch();
 
-      // Add to main tickets collection
       DocumentReference ticketRef = _firestore
           .collection('tickets')
           .doc(ticketId);
       batch.set(ticketRef, orderData);
 
-      // Add to user's tickets subcollection
       DocumentReference userTicketRef = _firestore
           .collection('users')
           .doc(user.uid)
@@ -418,7 +391,6 @@ class FirestoreService {
           .doc(ticketId);
       batch.set(userTicketRef, orderData);
 
-      // Add to event's tickets subcollection
       String eventId = eventTitle.replaceAll(' ', '_').toLowerCase();
       DocumentReference eventTicketRef = _firestore
           .collection('events')
@@ -427,7 +399,6 @@ class FirestoreService {
           .doc(ticketId);
       batch.set(eventTicketRef, orderData);
 
-      // Update user's profile
       await _authService.updateUserData({
         'email': user.email,
         'displayName': user.displayName ?? 'Unknown User',
@@ -436,7 +407,6 @@ class FirestoreService {
         'totalSpent': FieldValue.increment(ticketPrice + fees),
       });
 
-      // Commit the batch
       await batch.commit();
 
       return ticketId;
