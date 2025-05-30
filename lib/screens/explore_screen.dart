@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class ExploreScreen extends StatefulWidget {
   const ExploreScreen({super.key});
@@ -10,68 +11,134 @@ class ExploreScreen extends StatefulWidget {
 class _ExploreScreenState extends State<ExploreScreen> {
   final TextEditingController _searchController = TextEditingController();
   List<Map<String, dynamic>> _filteredEvents = [];
-  final List<Map<String, dynamic>> _allEvents = [
-    {
-      'title': 'JIHC Voice - 2025',
-      'venue': 'Act Hall',
-      'imagePath': 'assets/DSC03364.JPG',
-      'date': 'WED 16 May, 19:00',
-      'price': 1000,
-      'time': 'Wednesday, 19:00PM - 21:00PM',
-    },
-    {
-      'title': 'KVN - 2025',
-      'venue': 'Act Hall',
-      'imagePath': 'assets/DSC00297.JPG',
-      'date': 'THU 17 May, 18:00',
-      'price': 750,
-      'time': 'Thursday, 18:00PM - 20:00PM',
-    },
-    {
-      'title': 'Moral Night Girls',
-      'venue': 'Act Hall',
-      'imagePath': 'assets/DSC03364.JPG',
-      'date': 'FRI 18 May, 20:00',
-      'price': 1000,
-      'time': 'Friday, 20:00PM - 22:00PM',
-    },
-    {
-      'title': 'Welcome Party For Boys',
-      'venue': 'Act Hall',
-      'imagePath': 'assets/DSC03364.JPG',
-      'date': 'SAT 19 May, 16:00',
-      'price': 1000,
-      'time': 'Saturday, 16:00PM - 18:00PM',
-    },
-    {
-      'title': 'Teacher\'s Day by 3F-1/2',
-      'venue': 'Act Hall',
-      'imagePath': 'assets/DSC03741.JPG',
-      'date': 'MON 21 May, 14:00',
-      'price': 800,
-      'time': 'Monday, 14:00PM - 16:00PM',
-    },
-    {
-      'title': '8 MARCH by 2F-3/4',
-      'venue': 'Act Hall',
-      'imagePath': 'assets/photo_5350782979229739772_y.jpg',
-      'date': 'TUE 22 May, 15:30',
-      'price': 500,
-      'time': 'Tuesday, 15:30PM - 17:30PM',
-    },
-  ];
+  List<Map<String, dynamic>> _allEvents = [];
+  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _filteredEvents = _allEvents;
     _searchController.addListener(_filterEvents);
+    _loadEvents();
   }
 
   @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
+  }
+
+  // Load events from Firestore instead of using static data
+  Future<void> _loadEvents() async {
+    setState(() => _isLoading = true);
+    
+    try {
+      // If you're not ready to connect to Firestore yet, use the static data
+      // but add popularity metrics
+      _allEvents = [
+        {
+          'title': 'JIHC Voice - 2025',
+          'venue': 'Act Hall',
+          'imagePath': 'assets/DSC03364.JPG',
+          'date': 'WED 16 May, 19:00',
+          'price': 1000,
+          'time': 'Wednesday, 19:00PM - 21:00PM',
+          'soldTickets': 85, // Added popularity metrics
+          'capacity': 100,
+          'averageRating': 4.7,
+        },
+        {
+          'title': 'KVN - 2025',
+          'venue': 'Act Hall',
+          'imagePath': 'assets/DSC00297.JPG',
+          'date': 'THU 17 May, 18:00',
+          'price': 750,
+          'time': 'Thursday, 18:00PM - 20:00PM',
+          'soldTickets': 65,
+          'capacity': 100,
+          'averageRating': 4.2,
+        },
+        {
+          'title': 'Moral Night Girls',
+          'venue': 'Act Hall',
+          'imagePath': 'assets/DSC03364.JPG',
+          'date': 'FRI 18 May, 20:00',
+          'price': 1000,
+          'time': 'Friday, 20:00PM - 22:00PM',
+          'soldTickets': 92,
+          'capacity': 100,
+          'averageRating': 4.9,
+        },
+        {
+          'title': 'Welcome Party For Boys',
+          'venue': 'Act Hall',
+          'imagePath': 'assets/DSC03364.JPG',
+          'date': 'SAT 19 May, 16:00',
+          'price': 1000,
+          'time': 'Saturday, 16:00PM - 18:00PM',
+          'soldTickets': 78,
+          'capacity': 100,
+          'averageRating': 4.5,
+        },
+        {
+          'title': 'Teacher\'s Day by 3F-1/2',
+          'venue': 'Act Hall',
+          'imagePath': 'assets/DSC03741.JPG',
+          'date': 'MON 21 May, 14:00',
+          'price': 800,
+          'time': 'Monday, 14:00PM - 16:00PM',
+          'soldTickets': 45,
+          'capacity': 100,
+          'averageRating': 4.0,
+        },
+        {
+          'title': '8 MARCH by 2F-3/4',
+          'venue': 'Act Hall',
+          'imagePath': 'assets/photo_5350782979229739772_y.jpg',
+          'date': 'TUE 22 May, 15:30',
+          'price': 500,
+          'time': 'Tuesday, 15:30PM - 17:30PM',
+          'soldTickets': 30,
+          'capacity': 100,
+          'averageRating': 3.8,
+        },
+      ];
+
+      // Sort events by popularity for the "Popular Now" section
+      _sortEventsByPopularity();
+      
+      setState(() {
+        _filteredEvents = _allEvents;
+        _isLoading = false;
+      });
+    } catch (e) {
+      print('Error loading events: $e');
+      setState(() => _isLoading = false);
+    }
+  }
+
+  // Sort events by popularity score
+  void _sortEventsByPopularity() {
+    _allEvents.sort((a, b) {
+      // Calculate popularity score based on ticket sales and ratings
+      double scoreA = _calculatePopularityScore(a);
+      double scoreB = _calculatePopularityScore(b);
+      
+      // Sort in descending order (highest popularity first)
+      return scoreB.compareTo(scoreA);
+    });
+  }
+
+  // Calculate popularity score based on ticket sales and ratings
+  double _calculatePopularityScore(Map<String, dynamic> event) {
+    int soldTickets = event['soldTickets'] ?? 0;
+    int capacity = event['capacity'] ?? 100;
+    double averageRating = event['averageRating'] ?? 0.0;
+    
+    // Calculate sales ratio (percentage of capacity sold)
+    double salesRatio = capacity > 0 ? soldTickets / capacity : 0;
+    
+    // Weighted score: 70% ticket sales, 30% ratings
+    return (salesRatio * 0.7) + (averageRating / 5 * 0.3);
   }
 
   void _filterEvents() {
@@ -104,30 +171,32 @@ class _ExploreScreenState extends State<ExploreScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0),
-          child: ListView(
-            children: [
-              const SizedBox(height: 16),
-              _buildSearchBar(),
-              const SizedBox(height: 20),
-              _buildCategoryRow(),
-              const SizedBox(height: 24),
-              _buildSectionHeader('Upcoming Events', onTap: () {}),
-              const SizedBox(height: 16),
-              _buildUpcomingEvents(),
-              const SizedBox(height: 24),
-              _buildSectionHeader('Popular Now', onTap: () {}),
-              const SizedBox(height: 16),
-              _buildPopularNowHorizontalScroll(),
-              const SizedBox(height: 24),
-              _buildSectionHeader('Recommendations for you', onTap: () {}),
-              const SizedBox(height: 16),
-              _buildRecommendations(),
-              const SizedBox(height: 24),
-            ],
-          ),
-        ),
+        child: _isLoading 
+          ? const Center(child: CircularProgressIndicator())
+          : Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              child: ListView(
+                children: [
+                  const SizedBox(height: 16),
+                  _buildSearchBar(),
+                  const SizedBox(height: 20),
+                  _buildCategoryRow(),
+                  const SizedBox(height: 24),
+                  _buildSectionHeader('Upcoming Events', onTap: () {}),
+                  const SizedBox(height: 16),
+                  _buildUpcomingEvents(),
+                  const SizedBox(height: 24),
+                  _buildSectionHeader('Popular Now 🔥', onTap: () {}),
+                  const SizedBox(height: 16),
+                  _buildPopularNowHorizontalScroll(),
+                  const SizedBox(height: 24),
+                  _buildSectionHeader('Recommendations for you', onTap: () {}),
+                  const SizedBox(height: 16),
+                  _buildRecommendations(),
+                  const SizedBox(height: 24),
+                ],
+              ),
+            ),
       ),
     );
   }
@@ -177,7 +246,10 @@ class _ExploreScreenState extends State<ExploreScreen> {
           _buildCategoryItem(Icons.school, 'Education'),
           const SizedBox(width: 16),
           _buildCategoryItem(Icons.movie, 'Film & TV'),
-
+          const SizedBox(width: 16),
+          _buildCategoryItem(Icons.sports_basketball, 'Sports'),
+          const SizedBox(width: 16),
+          _buildCategoryItem(Icons.celebration, 'Parties'),
         ],
       ),
     );
@@ -341,13 +413,18 @@ class _ExploreScreenState extends State<ExploreScreen> {
   }
 
   Widget _buildPopularNowHorizontalScroll() {
+    // Use the sorted events (already sorted by popularity in _loadEvents)
+    final displayEvents = _searchController.text.isEmpty
+        ? _allEvents
+        : _filteredEvents;
+
     return SizedBox(
       height: 300,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
-        itemCount: _filteredEvents.length,
+        itemCount: displayEvents.length,
         itemBuilder: (context, index) {
-          final event = _filteredEvents[index];
+          final event = displayEvents[index];
           return GestureDetector(
             onTap: () => _navigateToEventDetails(event),
             child: Container(
@@ -377,6 +454,30 @@ class _ExploreScreenState extends State<ExploreScreen> {
                           },
                         ),
                       ),
+                      // Add popularity badge for events with high ticket sales
+                      if ((event['soldTickets'] ?? 0) > 70)
+                        Positioned(
+                          top: 12,
+                          left: 12,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.red,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.local_fire_department, color: Colors.white, size: 14),
+                                const SizedBox(width: 4),
+                                const Text(
+                                  'Popular',
+                                  style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
                       Positioned(
                         top: 12,
                         right: 12,
@@ -412,34 +513,21 @@ class _ExploreScreenState extends State<ExploreScreen> {
                     ),
                   ),
                   const SizedBox(height: 8),
+                  // Show ticket sales and ratings
                   Row(
                     children: [
-                      for (int i = 0; i < 5; i++)
-                        Container(
-                          margin: const EdgeInsets.only(right: 4),
-                          width: 24,
-                          height: 24,
-                          decoration: const BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: Colors.grey,
-                          ),
-                        ),
-                      const SizedBox(width: 4),
-                      Container(
-                        width: 24,
-                        height: 24,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Colors.grey[300],
-                        ),
-                        child: const Center(
-                          child: Text(
-                            '+15',
-                            style: TextStyle(
-                                fontSize: 10, fontWeight: FontWeight.bold),
-                          ),
-                        ),
+                      _buildPopularityChip(
+                        '${event['soldTickets'] ?? 0}/${event['capacity'] ?? 100}',
+                        Icons.people,
+                        Colors.blue[700]!,
                       ),
+                      const SizedBox(width: 8),
+                      if ((event['averageRating'] ?? 0) > 0)
+                        _buildPopularityChip(
+                          '${(event['averageRating'] ?? 0).toStringAsFixed(1)}⭐',
+                          Icons.star,
+                          Colors.amber[700]!,
+                        ),
                     ],
                   ),
                 ],
@@ -447,6 +535,31 @@ class _ExploreScreenState extends State<ExploreScreen> {
             ),
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildPopularityChip(String text, IconData icon, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: color),
+          const SizedBox(width: 4),
+          Text(
+            text,
+            style: TextStyle(
+              color: color,
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -597,6 +710,30 @@ class EventDetailsScreen extends StatelessWidget {
                     );
                   },
                 ),
+                // Add popularity badge for events with high ticket sales
+                if ((event['soldTickets'] ?? 0) > 70)
+                  Positioned(
+                    top: 16,
+                    left: 16,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.red,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.local_fire_department, color: Colors.white, size: 16),
+                          SizedBox(width: 4),
+                          Text(
+                            'Popular Event',
+                            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                 Positioned(
                   bottom: 0,
                   right: 0,
@@ -646,6 +783,24 @@ class EventDetailsScreen extends StatelessWidget {
                           ),
                         ),
                       ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  // Add popularity stats
+                  Row(
+                    children: [
+                      _buildStatItem(
+                        Icons.people,
+                        '${event['soldTickets'] ?? 0}/${event['capacity'] ?? 100}',
+                        'Attendees',
+                      ),
+                      const SizedBox(width: 20),
+                      if ((event['averageRating'] ?? 0) > 0)
+                        _buildStatItem(
+                          Icons.star,
+                          (event['averageRating'] ?? 0).toStringAsFixed(1),
+                          'Rating',
+                        ),
                     ],
                   ),
                   const SizedBox(height: 16),
@@ -756,13 +911,8 @@ class EventDetailsScreen extends StatelessWidget {
             height: 50,
             child: ElevatedButton(
               onPressed: () {
-                // Register for event
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Registration successful!'),
-                    backgroundColor: Colors.green,
-                  ),
-                );
+                // Register for event and update popularity
+                _purchaseTicket(context, event);
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.blue,
@@ -780,6 +930,18 @@ class EventDetailsScreen extends StatelessWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  // Purchase ticket and update popularity metrics
+  void _purchaseTicket(BuildContext context, Map<String, dynamic> event) {
+    // Here you would connect to Firestore to update ticket count
+    // For now, just show a success message
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Registration successful!'),
+        backgroundColor: Colors.green,
       ),
     );
   }
@@ -804,6 +966,34 @@ class EventDetailsScreen extends StatelessWidget {
               style: const TextStyle(
                 fontWeight: FontWeight.w500,
                 fontSize: 14,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStatItem(IconData icon, String value, String label) {
+    return Row(
+      children: [
+        Icon(icon, size: 20, color: Colors.blue),
+        const SizedBox(width: 8),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              value,
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+              ),
+            ),
+            Text(
+              label,
+              style: TextStyle(
+                color: Colors.grey[600],
+                fontSize: 12,
               ),
             ),
           ],
